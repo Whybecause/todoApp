@@ -1,0 +1,50 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    height: 100vh;
+}
+
+.cli {
+    text-decoration: none;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    width: 100%;
+    border-bottom: 1px solid black;
+    margin-top: 1rem;
+    padding-bottom: 0.5rem;
+}
+
+.cli:hover {
+    background-color: rgb(248, 247, 247);
+}
+
+.task-container {
+    width: 100%;
+}
+
+.deleteButton {
+    color: white;
+    background-color: rgb(110, 5, 5);
+    border-color: red;
+    display: inline-block;
+    font-weight: 400;
+    border: 1px solid;
+    padding: .375rem .75rem;
+    font-size: 1rem;
+    border-radius: 0.5rem;    
+    user-select: none;
+    cursor: pointer;
+    overflow: visible;
+}
+
+.deleteButton:focus {outline:0;}
+
+.deleteButton:hover {
+    color: white;
+    background-color: red;
+}

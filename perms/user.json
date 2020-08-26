@@ -1,0 +1,9 @@
+{
+    "/task": {
+        "GET":true,
+        "PUT":false,
+        "PATCH":false,
+        "POST":true,
+        "DELETE":false
+    }
+}
