@@ -9,7 +9,6 @@ const restify = require('restify');
 const Datastore = require('nedb');
 const jwt = require ('jsonwebtoken');
 const cookies = require('cookies');
-const { reset } = require('nodemon');
 const passphrase = 'MON-CODE-SECRET'
 
 const dbTask = new Datastore({
@@ -35,13 +34,19 @@ const server = restify.createServer();
         
         let authentification = new cookies(req, res, { keys: passphrase });
         req.jwt = authentification.get('JWT')
-
         if (req.jwt === undefined) {
             return res.redirect('/login.html', next)
         } 
 
         try {
-            req.jwt = jwt.verify(req.jwt, passphrase);
+            req.jwt = jwt.verify(req.jwt, passphrase, function(err, decoded) {
+                if (err) {
+                    return res.status(401).send({ message: 'Unauthorized ! '});
+                }
+                req.userId = decoded.id;
+                req.perms = decoded.perms
+            });
+            
         } catch(e) {
             authentification.set('JWT', null)
             return res.redirect('/login.html', next)
@@ -50,11 +55,11 @@ const server = restify.createServer();
     }) 
 
     server.use( (req, res, next) => {
-        if (req.jwt) {
-            for (let url of Object.keys(req.jwt)) {
+        if (req.perms) {
+            for (let url of Object.keys(req.perms)) {
                 let reg = new RegExp("^" + url ,"gi");
 
-                if ( req.url.match(reg) && !req.jwt[url][req.method]) {
+                if ( req.url.match(reg) && !req.perms[url][req.method]) {
                     res.status(403) 
                     return res.send()
                 }                
@@ -68,17 +73,31 @@ const server = restify.createServer();
         default: 'index.html'
     }))
 
-    
-    // GET
+    // GET ALL TASKS
     server.get("/task", (req, res) => {
-        dbTask.find({}, function (err, docs) {
+        dbUser.findOne({ _id: req.userId}, (err, foundUser) => {
             if (!err) {
-                return res.send(docs)
-            }
-            return res.send(err)
-        });
-
+                if (foundUser.role === 'admin') {
+                    dbTask.find({}, function (err, docs) {
+                        if (!err) {
+                            return res.send({docs: docs, role: foundUser.role});
+                        }
+                        return res.send(err);
+                    })
+                } else {
+                    dbTask.find({authorId: req.userId}, function (err, docs) {
+                        if (!err) {
+                            return res.send({docs: docs})
+                        }
+                        return res.send(err)
+                    });
+                } return;
+            } return res.send(err);
+        })
     });
+    
+
+    // GET ONE TASK
     server.get("/task/:id", (req, res) => {
         dbTask.findOne({_id: req.params.id}, function(err, doc) {
             if (!err) {
@@ -88,22 +107,29 @@ const server = restify.createServer();
         })
     });
 
-    // POST
-    server.post("/task", (req, res) => {
-
+    // POST NEW TASK
+    server.post("/task", async (req, res) => {
         // FILTRE DES DONNEES
         req.body = req.body
-        const user = req.userId;
-        console.log(user);
-        dbTask.insert( req.body, (err, newDocument) => {
+        let user = await dbUser.findOne({ _id: req.userId}, (err, foundUser) => {
             if (!err) {
-                // return res.send('Task ajoutée!');
-                return res.send(newDocument._id);
+                req.body.author = foundUser.firstname + ' ' + foundUser.lastname;
+                req.body.authorId = foundUser._id;
+                dbTask.insert(req.body, (err, newDocument) => {
+                    if (!err) {
+                        return res.send(newDocument._id);
+                    }
+                    return res.send(err + 'error adding task');
+                })
+                return;
             }
-            return res.send(err)
+            return res.send(err + 'You need to log in');
         })
-
     });
+    
+
+
+
 
     // UPDATE
     server.put("/task/", (req, res) => {
@@ -190,7 +216,6 @@ const server = restify.createServer();
     server.post("/login", (req, res) => {
         // control
         req.body = req.body;
-
         dbUser.findOne(req.body, (err, user) => {
             if(err) {
                 res.status(500)
@@ -200,8 +225,11 @@ const server = restify.createServer();
             if(user) {
                 let authentification = new cookies(req, res, { keys: passphrase });
                 let perms = require('./perms/'+ user.role + ".json")
-                let token = jwt.sign(perms, passphrase, { expiresIn : 15 * 60 })
-                
+                let token = jwt.sign(
+                    {id: user._id, perms: perms},
+                    passphrase,
+                    { expiresIn : 15 * 60 }
+                );
                 authentification.set('JWT', token)
                 res.status(204)
                 return res.send();
@@ -215,6 +243,28 @@ const server = restify.createServer();
 
             }
         })
+    })
+
+    // LOGOUT
+    server.get('/logout', function (req, res, next) {
+        let authentification = new cookies(req, res, { keys: passphrase });
+        req.jwt = authentification.get('JWT')
+        if (req.jwt) {
+            authentification.set('JWT', null);
+            return res.redirect('/login.html', next);
+        }
+      });
+
+    //   CURRENT USER
+    server.get('/user', function (req, res, next) {
+        let authentification = new cookies(req, res, { keys: passphrase });
+        req.jwt = authentification.get('JWT')
+        if (req.jwt) {
+            return res.send('connected');
+        } else {
+            return res.send(undefined);
+        }
+        next();
     })
 
     server.listen(1337, () => {

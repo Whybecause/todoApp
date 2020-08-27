@@ -1,5 +1,31 @@
+async function isUserLoggedIn() {
+    let response = await fetch('http://localhost:1337/user');
+    let data = await response.json();
+    return data;
+}
+
+for (let $logout of document.querySelectorAll('#logout')) {
+    isUserLoggedIn().then(function(data) {
+        // Si on a un token -> Show bouton Logout 
+        if (data !== undefined) {
+            let a = document.createElement('a');
+            a.className="nav-link";
+            a.setAttribute('href', '/logout');
+            a.innerHTML = 'Logout';
+            $logout.appendChild(a);
+
+        // Remove bouton Login/Register
+            let $ul = $logout.parentElement;
+            let $login = $ul.getElementsByTagName('li')[0]
+            let $register = $ul.getElementsByTagName('li')[1]
+            $login.remove($login)
+            $register.remove($register)
+
+        }
+    })
+}
+
 for (let $form of document.querySelectorAll('form')) {
-    console.log($form);
     let action = $form.getAttribute("action")
     let method = $form.getAttribute("method")
 
@@ -52,10 +78,11 @@ for (let $form of document.querySelectorAll('form')) {
         })
     }
 }
-// TODOO
-// ajouter tache a un utilisateur
-// faire qu'on ait que nos taches qui apparaissent lorsdqu'on se co
 
+
+function logoutSuccess() {
+    location.href = "/login.html"
+}
 
 function loginSuccess(data) {
     location.href = "/"
@@ -90,20 +117,30 @@ async function getTodos() {
 // APPEL -----------------
 getTodos().then(function(data) {
     let todos = document.getElementById('todos');
-    for (let i=0; i<data.length; i++) {
+    for (let i=0; i<data.docs.length; i++) {
         let taskContainer = document.createElement('li');
         taskContainer.className="cli";
-        taskContainer.setAttribute("id", data[i]._id);
+        taskContainer.setAttribute("id", data.docs[i]._id);
 
         let taskValue = document.createElement("div");
-        taskValue.className="task-container";
-        taskValue.innerHTML = data[i].value;
+        taskValue.className="task-value";
+        taskValue.innerHTML = data.docs[i].value;
 
+
+        
         let deleteBtn = document.createElement('button');
         deleteBtn.className="deleteButton";
         deleteBtn.innerHTML = "x";
         
+        
         taskContainer.appendChild(taskValue);
+        // L'admin peut voir le nom des autheurs de chaque task
+        if (data.role) {
+            let author = document.createElement('div');
+            author.innerHTML = data.docs[i].author;
+            author.className = 'task-author';
+            taskContainer.appendChild(author);
+        }
         taskContainer.appendChild(deleteBtn);
         todos.appendChild(taskContainer);
     }
@@ -122,12 +159,6 @@ async function deleteTask(taskId, event) {
     // Remove task from screen
     let li = event.target.closest('li');
     li.parentElement.removeChild(li);
-
-    // Show message delete
-    let deleteMsg = document.getElementById('deleteMsg');
-    deleteMsg.className="danger";
-    deleteMsg.innerHTML = data.numRemoved + ' ' + 'tâche a été supprimée';
-
     return data;
 }
 
@@ -140,4 +171,5 @@ todos.addEventListener('click', event => {
         deleteTask(taskId, event);
 }
 })
+
 
