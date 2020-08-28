@@ -1,17 +1,18 @@
 async function isUserLoggedIn() {
-    let response = await fetch('http://localhost:1337/user');
-    let data = await response.json();
-    return data;
+    try {
+        let response = await fetch('http://localhost:1337/user');
+        let data = await response.json();
+        return data;
+    } catch (e) {
+        return (undefined);
+    }
 }
-
-
 
 for (let $nav of document.querySelectorAll('#nav-container')) {
     isUserLoggedIn().then(function(data) {
         // Si le serv renvoie un msg sur GET /user == on a un token
         if (data !== undefined) {
             // show current user name
-            let $navContainer = document.getElementById('nav-container')
             let $userContainer = document.createElement('li');
             $userContainer.setAttribute('id', 'username');
             $userContainer.classsName = 'nav-item';
@@ -19,7 +20,7 @@ for (let $nav of document.querySelectorAll('#nav-container')) {
             $userText.className="nav-link usernameNav";
             $userText.innerHTML = data;
             $userContainer.appendChild($userText);
-            $navContainer.appendChild($userContainer);
+            $nav.appendChild($userContainer);
 
             // Si on a un token -> Show bouton Logout 
             let $logout = document.createElement('li');
@@ -44,6 +45,7 @@ for (let $nav of document.querySelectorAll('#nav-container')) {
     })
 }
 
+// VALIDATION GENERIQUE DE FORM POST -------------------------------
 for (let $form of document.querySelectorAll('form')) {
     let action = $form.getAttribute("action")
     let method = $form.getAttribute("method")
@@ -122,6 +124,7 @@ function registerError(data) {
     document.querySelector("#email").classList.add('is-invalid')
 }
 
+// FUNCTION APPELEE LORS DE L'AJOUT D'UNE NEW TASK
 function resetFormAddTask(response) {
     let $taskInput = document.getElementById('value');
     let $addTaskBtn = document.getElementById('addTaskBtn');
@@ -135,7 +138,7 @@ function resetFormAddTask(response) {
     $addNewTask.reset();
 }
 
-// DISPLAY TASK WHEN SUBMITING
+// FONCTION POUR AJOUT NEW TASK
 function showNewTodo(response) {
     let todos = document.getElementById('todos');
     let taskContainer = document.createElement('li');
@@ -157,6 +160,11 @@ function showNewTodo(response) {
 
     taskContainer.appendChild($date);
     taskContainer.appendChild(taskValue);
+
+    let noTaskContainer = document.getElementById('noTaskContainer');
+    if (noTaskContainer) {
+        noTaskContainer.remove(noTaskContainer);
+    }
     
     if (response.role === 'admin') {
         let author = document.createElement('div');
@@ -170,45 +178,62 @@ function showNewTodo(response) {
 }
 // GET ALL: Affichage des Todos lorsqu'on arrive sur la page
 async function getTodos() {
-    let response = await fetch('http://localhost:1337/task');
-    let data = await response.json();
-    return data;
+    try {
+        let response = await fetch('http://localhost:1337/task');
+        let data = await response.json();
+        return data;
+    } catch (e) {
+        return (e);
+    }
 }
+
 // APPEL -----------------
 
+let todos = document.getElementById('todos');
+if (todos) {
 getTodos().then(function(data) {
-    let todos = document.getElementById('todos');
-    for (let i=0; i<data.docs.length; i++) {
-        let taskContainer = document.createElement('li');
-        taskContainer.className="cli ";
-        taskContainer.setAttribute("id", data.docs[i]._id);
+    if (data.docs) {
+        for (let i=0; i<data.docs.length; i++) {
+            let taskContainer = document.createElement('li');
+            taskContainer.className="cli ";
+            taskContainer.setAttribute("id", data.docs[i]._id);
 
-        let taskValue = document.createElement("div");
-        taskValue.className="task-value";
-        taskValue.innerHTML = data.docs[i].value;
+            let taskValue = document.createElement("div");
+            taskValue.className="task-value";
+            taskValue.innerHTML = data.docs[i].value;
 
-        let deleteBtn = document.createElement('button');
-        deleteBtn.className="deleteButton";
-        deleteBtn.innerHTML = "x";
-        
-        let $date = document.createElement('span');
-        $date.innerHTML = data.docs[i].date;
-        $date.className = 'task-date';
+            let deleteBtn = document.createElement('button');
+            deleteBtn.className="deleteButton";
+            deleteBtn.innerHTML = "x";
+            
+            let $date = document.createElement('span');
+            $date.innerHTML = data.docs[i].date;
+            $date.className = 'task-date';
 
-        taskContainer.appendChild($date);
-        taskContainer.appendChild(taskValue);
+            taskContainer.appendChild($date);
+            taskContainer.appendChild(taskValue);
 
-        // GET task/ renvoi un role si role = admin
-        if (data.role) {
-            let author = document.createElement('div');
-            author.innerHTML = data.docs[i].author;
-            author.className = 'task-author';
-            taskContainer.appendChild(author);
+            // GET task/ renvoi un role si role = admin
+            if (data.role) {
+                let author = document.createElement('div');
+                author.innerHTML = data.docs[i].author;
+                author.className = 'task-author';
+                taskContainer.appendChild(author);
+            }
+            taskContainer.appendChild(deleteBtn);
+            todos.appendChild(taskContainer);
         }
-        taskContainer.appendChild(deleteBtn);
-        todos.appendChild(taskContainer);
+    } else {
+        let noTaskContainer = document.createElement('li');
+        noTaskContainer.setAttribute('id', 'noTaskContainer');
+        noTaskContainer.className="cli ";
+        noTaskContainer.innerHTML = data.message;
+        todos.appendChild(noTaskContainer);
+
     }
-})
+
+    })
+}
 
 
 // DELETE ONE TODO FUNCTION --------------------------------
@@ -232,63 +257,65 @@ async function patchTodo() {
 }
 
 // Listen for click and then update or delete
-todos.addEventListener('click', event => {
-    let taskId = event.target.parentNode.id;
-    let elementClicked = event.target;
-    // Delete task/:id
-    if (elementClicked.className === 'deleteButton') {
-        deleteTask(taskId, event);
-}
-    // PATCH TASK/:ID
-    if (elementClicked.className === 'task-value') {
-        let $form = document.createElement('form');
-        $form.setAttribute('id', 'patchTask');
-
-        let $btn = document.createElement('button');
-        $btn.className='cbtn';
-        $btn.setAttribute('type', 'submit');
-        $btn.innerHTML = "Update";
-
-        let text = elementClicked.innerHTML;
-        let $input = document.createElement('input');
-        $input.setAttribute('name', 'value');
-        $input.type = "text"
-        $input.value = text;
-        $input.className = "form-control"
-        elementClicked.innerHTML = "";
-
-        $form.appendChild($input);
-        $form.appendChild($btn);
-        elementClicked.appendChild($form);
-        elementClicked.onclik = null; 
-
-        let $patchTask = document.getElementById('patchTask');
-        $patchTask.addEventListener('submit', e => {
-            e.preventDefault();
-            let $formData = new FormData(e.target);
-            let data = {}
-
-            for (entry of $formData.entries()) {
-                data[entry[0]] = entry[1];
-            }
-        
-            fetch(`/task/${taskId}`, {
-                method: 'PATCH',
-                headers: {
-                    "Accept": "application/json",
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify(data),
-            }).then(response => {
-                return response.json();
-            }).then(res => {
-                elementClicked.innerHTML= res.value;
-            }).catch(function(error) {
-                console.log(error);
-            })
-        })
+if (todos) {
+    todos.addEventListener('click', event => {
+        let taskId = event.target.parentNode.id;
+        let elementClicked = event.target;
+        // Delete task/:id
+        if (elementClicked.className === 'deleteButton') {
+            deleteTask(taskId, event);
     }
-})
+        // PATCH TASK/:ID
+        if (elementClicked.className === 'task-value') {
+            let $form = document.createElement('form');
+            $form.setAttribute('id', 'patchTask');
+
+            let $btn = document.createElement('button');
+            $btn.className='cbtn';
+            $btn.setAttribute('type', 'submit');
+            $btn.innerHTML = "Update";
+
+            let text = elementClicked.innerHTML;
+            let $input = document.createElement('input');
+            $input.setAttribute('name', 'value');
+            $input.type = "text"
+            $input.value = text;
+            $input.className = "form-control"
+            elementClicked.innerHTML = "";
+
+            $form.appendChild($input);
+            $form.appendChild($btn);
+            elementClicked.appendChild($form);
+            elementClicked.onclik = null; 
+
+            let $patchTask = document.getElementById('patchTask');
+            $patchTask.addEventListener('submit', e => {
+                e.preventDefault();
+                let $formData = new FormData(e.target);
+                let data = {}
+
+                for (entry of $formData.entries()) {
+                    data[entry[0]] = entry[1];
+                }
+            
+                fetch(`/task/${taskId}`, {
+                    method: 'PATCH',
+                    headers: {
+                        "Accept": "application/json",
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify(data),
+                }).then(response => {
+                    return response.json();
+                }).then(res => {
+                    elementClicked.innerHTML= res.value;
+                }).catch(function(error) {
+                    console.log(error);
+                })
+            })
+        }
+    })
+}
 
 
 

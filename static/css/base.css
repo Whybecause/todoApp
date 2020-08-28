@@ -137,3 +137,7 @@ h1 {
 .usernameNav {
     color: white!important;
 }
+
+#addNewTask {
+    padding-bottom: 1rem;
+}

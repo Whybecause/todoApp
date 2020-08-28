@@ -8,11 +8,6 @@
     // Connection
 // compte admin : admin@admin.com / admin
 // compte user: user@user.com / user
-    // features : 
-// l'admin peut voir les taks de tout le monde avec l'affichage du nom de l'auteur
-// les user ne voient pas leur nom affiché à côté de chaque task
-
-// Bugs : lors déconnection, si on clicque sur Todo, ça a pas rafffraichit et donc ça nous ammène sur la page sans pouvoir poster de task au lieu de renvoyer sur login.html
 
 const restify = require('restify');
 const Datastore = require('nedb');
@@ -42,8 +37,6 @@ const server = restify.createServer();
             return next();
         }
         
-
-
         let authentification = new cookies(req, res, { keys: passphrase });
         req.jwt = authentification.get('JWT')
         if (req.jwt === undefined) {
@@ -81,6 +74,7 @@ const server = restify.createServer();
         }   
         return next()     
     })
+
     
     server.get('/*', restify.plugins.serveStatic({
         directory: 'static',
@@ -93,15 +87,22 @@ const server = restify.createServer();
             if (!err) {
                 if (foundUser.role === 'admin') {
                     dbTask.find({}, function (err, docs) {
-                        if (!err) {
+                        if (!err && docs.length) {
+                            console.log(docs);
                             return res.send({docs: docs, role: foundUser.role});
+                        }
+                        if (!docs.length) {
+                            return res.send({ message: 'Nothing todo :) '})
                         }
                         return res.send(err);
                     })
                 } else {
                     dbTask.find({authorId: req.userId}, function (err, docs) {
-                        if (!err) {
+                        if (!err && docs.length) {
                             return res.send({docs: docs})
+                        }
+                        if (!docs.length) {
+                            return res.send({ message: 'Nothing todo :) '})
                         }
                         return res.send(err)
                     });
