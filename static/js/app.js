@@ -31,6 +31,7 @@ for (let $form of document.querySelectorAll('form')) {
 
     if (action && method) {
         $form.addEventListener('submit', e => {
+            console.log($form);
             e.preventDefault();
             let formData =  new FormData(e.target)
             let data = {}
@@ -119,19 +120,16 @@ getTodos().then(function(data) {
     let todos = document.getElementById('todos');
     for (let i=0; i<data.docs.length; i++) {
         let taskContainer = document.createElement('li');
-        taskContainer.className="cli";
+        taskContainer.className="cli ";
         taskContainer.setAttribute("id", data.docs[i]._id);
 
         let taskValue = document.createElement("div");
         taskValue.className="task-value";
         taskValue.innerHTML = data.docs[i].value;
 
-
-        
         let deleteBtn = document.createElement('button');
         deleteBtn.className="deleteButton";
         deleteBtn.innerHTML = "x";
-        
         
         taskContainer.appendChild(taskValue);
         // L'admin peut voir le nom des autheurs de chaque task
@@ -162,6 +160,12 @@ async function deleteTask(taskId, event) {
     return data;
 }
 
+async function patchTodo() {
+    let response = await fetch(`http://localhost:1337/task/${taskId}`);
+    let data = await response.json();
+    return data;
+}
+
 // Listen for click and then update or delete
 todos.addEventListener('click', event => {
     let taskId = event.target.parentNode.id;
@@ -170,6 +174,50 @@ todos.addEventListener('click', event => {
     if (elementClicked.className === 'deleteButton') {
         deleteTask(taskId, event);
 }
+    // PATCH TASK/:ID
+    if (elementClicked.className === 'task-value') {
+        let $form = document.createElement('form');
+        $form.setAttribute('id', 'patchTask');
+
+        let $btn = document.createElement('button');
+        $btn.className='cbtn';
+        $btn.setAttribute('type', 'submit');
+        $btn.innerHTML = "Update";
+
+        let text = elementClicked.innerHTML;
+        let $input = document.createElement('input');
+        $input.setAttribute('name', 'value');
+        $input.type = "text"
+        $input.value = text;
+        $input.className = "form-control"
+        elementClicked.innerHTML = "";
+
+        $form.appendChild($input);
+        $form.appendChild($btn);
+        elementClicked.appendChild($form);
+        elementClicked.onclik = null; 
+
+        let $patchTask = document.getElementById('patchTask');
+        $patchTask.addEventListener('submit', e => {
+            // e.preventDefault();
+            let $formData = new FormData(e.target);
+            let data = {}
+            for (entry of $formData.entries()) {
+                data[entry[0]] = entry[1];
+            }
+            fetch(`/task/${taskId}`, {
+                method: 'PATCH',
+                body: $formData
+            }).then(function(response) {
+                return response.text();
+            }).then(function(res) {
+                console.log(res);
+            }).catch(function(error) {
+                console.log(error);
+            })
+        })
+    }
 })
+
 
 

@@ -5,6 +5,15 @@
 // GET
 // curl --request GET --header "Content-Type: application/json" http://192.168.1.37:1337/task | jq
 
+    // Connection
+// compte admin : admin@admin.com / admin
+// compte user: user@user.com / user
+    // features : 
+// l'admin peut voir les taks de tout le monde avec l'affichage du nom de l'auteur
+// les user ne voient pas leur nom affiché à côté de chaque task
+
+// Bugs : lors déconnection, si on clicque sur Todo, ça a pas rafffraichit et donc ça nous ammène sur la page sans pouvoir poster de task au lieu de renvoyer sur login.html
+
 const restify = require('restify');
 const Datastore = require('nedb');
 const jwt = require ('jsonwebtoken');
@@ -127,10 +136,6 @@ const server = restify.createServer();
         })
     });
     
-
-
-
-
     // UPDATE
     server.put("/task/", (req, res) => {
         req.body = req.body
@@ -162,7 +167,12 @@ const server = restify.createServer();
 
     server.patch("/task/:id", (req, res) => {
         req.body = req.body
-        dbTask.update( { _id: req.params.id }, { $set: req.body } )
+        dbTask.update( { _id: req.params.id }, { $set: req.body } , (err, updatedTask) => {
+            if (!err) {
+                return res.send ({ updatedTask: updatedTask})
+            }
+            return res.send(err);
+        })
     });
  
     // DELETE
