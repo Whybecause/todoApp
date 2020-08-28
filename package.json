@@ -12,6 +12,7 @@
   "dependencies": {
     "cookies": "^0.8.0",
     "jsonwebtoken": "^8.5.1",
+    "moment": "^2.27.0",
     "nedb": "^1.8.0",
     "nodemon": "^2.0.4",
     "restify": "^8.5.1"

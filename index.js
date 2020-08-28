@@ -18,7 +18,8 @@ const restify = require('restify');
 const Datastore = require('nedb');
 const jwt = require ('jsonwebtoken');
 const cookies = require('cookies');
-const passphrase = 'MON-CODE-SECRET'
+const passphrase = 'MON-CODE-SECRET';
+const moment = require('moment');
 
 const dbTask = new Datastore({
     filename: __dirname + "/.db/task.database",
@@ -41,6 +42,8 @@ const server = restify.createServer();
             return next();
         }
         
+
+
         let authentification = new cookies(req, res, { keys: passphrase });
         req.jwt = authentification.get('JWT')
         if (req.jwt === undefined) {
@@ -53,7 +56,9 @@ const server = restify.createServer();
                     return res.status(401).send({ message: 'Unauthorized ! '});
                 }
                 req.userId = decoded.id;
-                req.perms = decoded.perms
+                req.userFirstName = decoded.firstname;
+                req.userLastName = decoded.lastname;
+                req.perms = decoded.perms;
             });
             
         } catch(e) {
@@ -124,13 +129,22 @@ const server = restify.createServer();
             if (!err) {
                 req.body.author = foundUser.firstname + ' ' + foundUser.lastname;
                 req.body.authorId = foundUser._id;
-                dbTask.insert(req.body, (err, newDocument) => {
-                    if (!err) {
-                        return res.send(newDocument._id);
-                    }
-                    return res.send(err + 'error adding task');
-                })
-                return;
+                let date = moment().format('DD-MM-YYYY');
+                req.body.date = date;
+                let userRole = foundUser.role
+                let author = foundUser.firstname + ' ' + foundUser.lastname;
+                if (req.body.value !== ''){
+                    dbTask.insert(req.body, (err, newDocument) => {
+                        if (!err) {
+                            
+                            return res.send({ id: newDocument._id, role: userRole, author: author, date: date});
+                        }
+                        return res.send(err + 'error adding task');
+                    })
+                    return;
+                } else {
+                    console.log('Task can not be empty');
+                }
             }
             return res.send(err + 'You need to log in');
         })
@@ -169,7 +183,7 @@ const server = restify.createServer();
         req.body = req.body
         dbTask.update( { _id: req.params.id }, { $set: req.body } , (err, updatedTask) => {
             if (!err) {
-                return res.send ({ updatedTask: updatedTask})
+                return res.send ({ updatedTask: updatedTask, value: req.body.value})
             }
             return res.send(err);
         })
@@ -236,7 +250,7 @@ const server = restify.createServer();
                 let authentification = new cookies(req, res, { keys: passphrase });
                 let perms = require('./perms/'+ user.role + ".json")
                 let token = jwt.sign(
-                    {id: user._id, perms: perms},
+                    {id: user._id, firstname: user.firstname, lastname: user.lastname, perms: perms},
                     passphrase,
                     { expiresIn : 15 * 60 }
                 );
@@ -270,7 +284,9 @@ const server = restify.createServer();
         let authentification = new cookies(req, res, { keys: passphrase });
         req.jwt = authentification.get('JWT')
         if (req.jwt) {
-            return res.send('connected');
+            // return res.send('connected');
+            let username = req.userFirstName + ' ' + req.userLastName;
+            return res.send(username);
         } else {
             return res.send(undefined);
         }

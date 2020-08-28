@@ -4,17 +4,36 @@ async function isUserLoggedIn() {
     return data;
 }
 
-for (let $logout of document.querySelectorAll('#logout')) {
+
+
+for (let $nav of document.querySelectorAll('#nav-container')) {
     isUserLoggedIn().then(function(data) {
-        // Si on a un token -> Show bouton Logout 
+        // Si le serv renvoie un msg sur GET /user == on a un token
         if (data !== undefined) {
+            // show current user name
+            let $navContainer = document.getElementById('nav-container')
+            let $userContainer = document.createElement('li');
+            $userContainer.setAttribute('id', 'username');
+            $userContainer.classsName = 'nav-item';
+            let $userText = document.createElement('a');
+            $userText.className="nav-link usernameNav";
+            $userText.innerHTML = data;
+            $userContainer.appendChild($userText);
+            $navContainer.appendChild($userContainer);
+
+            // Si on a un token -> Show bouton Logout 
+            let $logout = document.createElement('li');
+            $logout.classsName = 'nav-item';
+            $logout.setAttribute('id', 'logout');
+            $logout.setAttribute('callback-successs', 'logoutSuccess');
             let a = document.createElement('a');
             a.className="nav-link";
             a.setAttribute('href', '/logout');
             a.innerHTML = 'Logout';
             $logout.appendChild(a);
+            $nav.appendChild($logout);
 
-        // Remove bouton Login/Register
+            // Remove bouton Login/Register
             let $ul = $logout.parentElement;
             let $login = $ul.getElementsByTagName('li')[0]
             let $register = $ul.getElementsByTagName('li')[1]
@@ -31,7 +50,6 @@ for (let $form of document.querySelectorAll('form')) {
 
     if (action && method) {
         $form.addEventListener('submit', e => {
-            console.log($form);
             e.preventDefault();
             let formData =  new FormData(e.target)
             let data = {}
@@ -81,6 +99,7 @@ for (let $form of document.querySelectorAll('form')) {
 }
 
 
+
 function logoutSuccess() {
     location.href = "/login.html"
 }
@@ -103,19 +122,60 @@ function registerError(data) {
     document.querySelector("#email").classList.add('is-invalid')
 }
 
-function resetFormAddTask() {
+function resetFormAddTask(response) {
+    let $taskInput = document.getElementById('value');
+    let $addTaskBtn = document.getElementById('addTaskBtn');
+
+    if ( $taskInput.value == '') {
+        alert('Veuillez entre une task');
+        return;
+    }
+    showNewTodo(response);
     let $addNewTask = document.getElementById('addNewTask')
     $addNewTask.reset();
 }
 
+// DISPLAY TASK WHEN SUBMITING
+function showNewTodo(response) {
+    let todos = document.getElementById('todos');
+    let taskContainer = document.createElement('li');
+    taskContainer.className="cli ";
+    taskContainer.setAttribute("id", response.id);
+
+    let taskValue = document.createElement("div");
+    let $value = document.getElementById('value').value;
+    taskValue.className="task-value";
+    taskValue.innerHTML = $value;
+
+    let deleteBtn = document.createElement('button');
+    deleteBtn.className="deleteButton";
+    deleteBtn.innerHTML = "x";
+
+    let $date = document.createElement('span');
+    $date.innerHTML = response.date;
+    $date.className = 'task-date';
+
+    taskContainer.appendChild($date);
+    taskContainer.appendChild(taskValue);
+    
+    if (response.role === 'admin') {
+        let author = document.createElement('div');
+        author.innerHTML = response.author;
+        author.className = 'task-author';
+        taskContainer.appendChild(author);
+    }
+    taskContainer.appendChild(deleteBtn);
+    todos.appendChild(taskContainer);
+
+}
 // GET ALL: Affichage des Todos lorsqu'on arrive sur la page
-//  FUNCTION -----------------------------
 async function getTodos() {
     let response = await fetch('http://localhost:1337/task');
     let data = await response.json();
     return data;
 }
 // APPEL -----------------
+
 getTodos().then(function(data) {
     let todos = document.getElementById('todos');
     for (let i=0; i<data.docs.length; i++) {
@@ -131,8 +191,14 @@ getTodos().then(function(data) {
         deleteBtn.className="deleteButton";
         deleteBtn.innerHTML = "x";
         
+        let $date = document.createElement('span');
+        $date.innerHTML = data.docs[i].date;
+        $date.className = 'task-date';
+
+        taskContainer.appendChild($date);
         taskContainer.appendChild(taskValue);
-        // L'admin peut voir le nom des autheurs de chaque task
+
+        // GET task/ renvoi un role si role = admin
         if (data.role) {
             let author = document.createElement('div');
             author.innerHTML = data.docs[i].author;
@@ -143,7 +209,6 @@ getTodos().then(function(data) {
         todos.appendChild(taskContainer);
     }
 })
-
 
 
 // DELETE ONE TODO FUNCTION --------------------------------
@@ -199,19 +264,25 @@ todos.addEventListener('click', event => {
 
         let $patchTask = document.getElementById('patchTask');
         $patchTask.addEventListener('submit', e => {
-            // e.preventDefault();
+            e.preventDefault();
             let $formData = new FormData(e.target);
             let data = {}
+
             for (entry of $formData.entries()) {
                 data[entry[0]] = entry[1];
             }
+        
             fetch(`/task/${taskId}`, {
                 method: 'PATCH',
-                body: $formData
-            }).then(function(response) {
-                return response.text();
-            }).then(function(res) {
-                console.log(res);
+                headers: {
+                    "Accept": "application/json",
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(data),
+            }).then(response => {
+                return response.json();
+            }).then(res => {
+                elementClicked.innerHTML= res.value;
             }).catch(function(error) {
                 console.log(error);
             })
